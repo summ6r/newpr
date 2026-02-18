@@ -1,36 +1,40 @@
-def add(x, y):
-    return x + y
-
-def subtract(x, y):
-    return x - y
-
-def multiply(x, y):
-    return x * y
-
-def divide(x, y):
-    if y != 0:
-        return x / y
-    else:
-        return "Ошибка деления на ноль!"
-
-print("Выберите операцию:")
-print("1.Сложение")
-print("2.Вычитание")
-print("3.Умножение")
-print("4.Деление")
-
-choice = input("Введите номер операции (1/2/3/4): ")
-
-num1 = float(input("Введите первое число: "))
-num2 = float(input("Введите второе число: "))
-
-if choice == '1':
-    print(f"{num1}+{num2}={add(num1,num2)}")
-elif choice == '2':
-    print(f"{num1}-{num2}={subtract(num1,num2)}")
-elif choice == '3':
-    print(f"{num1}*{num2}={multiply(num1,num2)}")
-elif choice == '4':
-    print(f"{num1}/{num2}={divide(num1,num2)}")
-else:
-    print("Неверный выбор операции!")
+import requests
+def fetch_exchange_rates():
+      response = requests.get("https://www.cbr.ru/scripts/XML_daily.asp")
+      if response.status_code != 200:
+          raise Exception("Ошибка загрузки курсов валют.")
+      data = response.text.splitlines()
+      rates = {}
+      for line in data:
+          if "<Valute ID=" in line:
+              charcode_start = line.find("<CharCode>")
+              charcode_end = line.find("</CharCode>")
+              charcode = line[charcode_start + len("<CharCode>"):charcode_end]
+              value_start = line.find("<Value>")
+              value_end = line.find("</Value>")
+              value = float(line[value_start + len("<Value>"):value_end].replace(",", "."))
+              nominal_start = line.find("<Nominal>")
+              nominal_end = line.find("</Nominal>")
+              nominal = int(line[nominal_start + len("<Nominal>"):nominal_end])
+              rate = value / nominal
+              rates[charcode] = rate
+      return rates
+def convert_currency(amount, from_currency, to_currency, exchange_rates):
+      base_rate = exchange_rates.get(from_currency.upper())
+      target_rate = exchange_rates.get(to_currency.upper())
+      if not base_rate or not target_rate:
+          raise ValueError("Одна из указанных валют отсутствует в списке доступных.")
+      converted_amount = amount * (target_rate / base_rate)
+      return round(converted_amount, 2)
+if __name__ == "__main__":
+      # Загружаем свежие курсы валют
+      exchange_rates = fetch_exchange_rates()
+      while True:
+          source_currency = input("Введите исходную валюту (например, USD): ").upper().strip()
+          target_currency = input("Введите итоговую валюту (например, EUR): ").upper().strip()
+          amount = float(input("Введите сумму для конвертации: "))
+          try:
+              result = convert_currency(amount, source_currency, target_currency, exchange_rates)
+              print(f"{amount} {source_currency} равняется примерно {result:.2f} {target_currency}.")
+          except Exception as e:
+              print(f"Ошибка: {e}")
